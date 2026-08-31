@@ -1,5 +1,38 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="./github-banner-dark-clean.png">
-  <source media="(prefers-color-scheme: light)" srcset="./github-banner-light-clean.png">
-  <img src="./github-banner-light-clean.png" alt="Ramya Sree Bommakani">
-</picture>
+<!-- PREMIUM_GITHUB_PROFILE_START -->
+
+<table>
+<tr>
+
+<td width="59%" valign="top">
+
+<img
+src="./terminal-card.svg"
+width="100%"
+alt="Animated GitHub Terminal"/>
+
+</td>
+
+<td width="41%" valign="top">
+
+<img
+src="./info-card.svg"
+width="100%"
+alt="Animated GitHub Profile Information"/>
+
+</td>
+
+</tr>
+</table>
+
+<br/>
+
+<p align="center">
+
+<img
+src="./github-contribution-animation.svg"
+width="100%"
+alt="Animated GitHub Contribution Graph"/>
+
+</p>
+
+<!-- PREMIUM_GITHUB_PROFILE_END -->
