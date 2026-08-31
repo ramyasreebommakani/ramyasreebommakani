@@ -46,7 +46,7 @@
 <td width="59%" valign="top">
 
 <img
-src="./terminal-card.svg"
+src="./terminal-card.gif"
 width="100%"
 alt="Animated GitHub Terminal"/>
 
@@ -55,7 +55,7 @@ alt="Animated GitHub Terminal"/>
 <td width="41%" valign="top">
 
 <img
-src="./info-card.svg"
+src="./info-card.gif"
 width="100%"
 alt="Animated GitHub Profile Information"/>
 
@@ -69,7 +69,7 @@ alt="Animated GitHub Profile Information"/>
 <p align="center">
 
 <img
-src="./github-contribution-animation.svg"
+src="./github-contribution-animation.gif"
 width="100%"
 alt="Animated GitHub Contribution Graph"/>
 
