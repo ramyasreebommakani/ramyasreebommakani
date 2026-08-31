@@ -1,1 +1,497 @@
+name: Update Contribution Animation
 
+on:
+  schedule:
+    # Runs every day at 02:30 UTC
+    - cron: "30 2 * * *"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-contributions:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ------------------------------------------------------
+      # Checkout repository
+      # ------------------------------------------------------
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      # ------------------------------------------------------
+      # Set up Python
+      # ------------------------------------------------------
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+
+      # ------------------------------------------------------
+      # Install Pillow
+      # ------------------------------------------------------
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pillow requests
+
+
+      # ------------------------------------------------------
+      # Generate REAL GitHub contribution GIF
+      # ------------------------------------------------------
+
+      - name: Generate contribution animation
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.repository_owner }}
+
+        run: |
+
+          python <<'PY'
+
+          import os
+          import requests
+          import random
+          from pathlib import Path
+
+          from PIL import Image, ImageDraw, ImageFont
+
+
+          # ==================================================
+          # SETTINGS
+          # ==================================================
+
+          USERNAME = os.environ["GITHUB_USERNAME"]
+
+          TOKEN = os.environ["GITHUB_TOKEN"]
+
+          OUTPUT = Path(
+              "github-contribution-animation.gif"
+          )
+
+
+          # ==================================================
+          # GITHUB GRAPHQL
+          # ==================================================
+
+          query = """
+          query($login: String!) {
+            user(login: $login) {
+              contributionsCollection {
+                contributionCalendar {
+                  totalContributions
+                  weeks {
+                    contributionDays {
+                      date
+                      contributionCount
+                      contributionLevel
+                    }
+                  }
+                }
+              }
+            }
+          }
+          """
+
+          response = requests.post(
+              "https://api.github.com/graphql",
+              json={
+                  "query": query,
+                  "variables": {
+                      "login": USERNAME
+                  }
+              },
+              headers={
+                  "Authorization":
+                      f"Bearer {TOKEN}",
+                  "Content-Type":
+                      "application/json"
+              },
+              timeout=30
+          )
+
+          response.raise_for_status()
+
+          data = response.json()
+
+
+          if "errors" in data:
+
+              raise RuntimeError(
+                  data["errors"]
+              )
+
+
+          calendar = (
+              data["data"]
+              ["user"]
+              ["contributionsCollection"]
+              ["contributionCalendar"]
+          )
+
+
+          weeks = calendar["weeks"]
+
+
+          # ==================================================
+          # CONVERT REAL DATA TO 53 x 7 GRID
+          # ==================================================
+
+          grid = []
+
+          for week in weeks[-53:]:
+
+              days = week[
+                  "contributionDays"
+              ]
+
+              week_values = []
+
+              for day in days:
+
+                  count = day[
+                      "contributionCount"
+                  ]
+
+                  if count == 0:
+                      level = 0
+
+                  elif count <= 2:
+                      level = 1
+
+                  elif count <= 5:
+                      level = 2
+
+                  elif count <= 9:
+                      level = 3
+
+                  else:
+                      level = 4
+
+                  week_values.append(
+                      level
+                  )
+
+              while len(week_values) < 7:
+                  week_values.append(0)
+
+              grid.append(
+                  week_values[:7]
+              )
+
+
+          while len(grid) < 53:
+              grid.insert(0, [0] * 7)
+
+
+          grid = grid[-53:]
+
+
+          # ==================================================
+          # IMAGE SETTINGS
+          # ==================================================
+
+          WIDTH = 1100
+
+          HEIGHT = 235
+
+          CELL = 15
+
+          GAP = 4
+
+          START_X = 20
+
+          START_Y = 48
+
+          COLORS = [
+              "#161b22",
+              "#0e4429",
+              "#006d32",
+              "#26a641",
+              "#39d353"
+          ]
+
+
+          FONT_PATH = (
+              "/usr/share/fonts/"
+              "truetype/dejavu/"
+              "DejaVuSansMono.ttf"
+          )
+
+          FONT = ImageFont.truetype(
+              FONT_PATH,
+              10
+          )
+
+
+          SMALL_FONT = ImageFont.truetype(
+              FONT_PATH,
+              10
+          )
+
+
+          # ==================================================
+          # CREATE ANIMATION
+          # ==================================================
+
+          frames = []
+
+          max_diagonal = 59
+
+
+          for current in range(
+              max_diagonal + 12
+          ):
+
+              image = Image.new(
+                  "RGB",
+                  (WIDTH, HEIGHT),
+                  "#070a0f"
+              )
+
+              draw = ImageDraw.Draw(
+                  image
+              )
+
+
+              # ----------------------------------------------
+              # Main glass card
+              # ----------------------------------------------
+
+              draw.rounded_rectangle(
+                  (
+                      1,
+                      1,
+                      WIDTH - 2,
+                      HEIGHT - 2
+                  ),
+                  radius=20,
+                  fill="#0d1117",
+                  outline="#30363d",
+                  width=2
+              )
+
+
+              # ----------------------------------------------
+              # Header
+              # ----------------------------------------------
+
+              draw.text(
+                  (
+                      22,
+                      17
+                  ),
+                  "GITHUB / CONTRIBUTION MATRIX",
+                  font=FONT,
+                  fill="#8b949e"
+              )
+
+
+              # ----------------------------------------------
+              # Green ambient glow
+              # ----------------------------------------------
+
+              draw.ellipse(
+                  (
+                      120,
+                      35,
+                      980,
+                      210
+                  ),
+                  fill="#0b2115"
+              )
+
+
+              # ----------------------------------------------
+              # Real contribution cells
+              # ----------------------------------------------
+
+              for col in range(53):
+
+                  for row in range(7):
+
+                      diagonal = (
+                          (52 - col)
+                          +
+                          (6 - row)
+                      )
+
+                      if diagonal <= current:
+
+                          level = grid[col][row]
+
+                          x = (
+                              START_X
+                              +
+                              col *
+                              (CELL + GAP)
+                          )
+
+                          y = (
+                              START_Y
+                              +
+                              row *
+                              (CELL + GAP)
+                          )
+
+                          draw.rounded_rectangle(
+                              (
+                                  x,
+                                  y,
+                                  x + CELL,
+                                  y + CELL
+                              ),
+                              radius=3,
+                              fill=COLORS[level]
+                          )
+
+
+                          # --------------------------------
+                          # Bright glint on active cells
+                          # --------------------------------
+
+                          if (
+                              level >= 3
+                              and diagonal == current
+                          ):
+
+                              draw.rounded_rectangle(
+                                  (
+                                      x - 2,
+                                      y - 2,
+                                      x + CELL + 2,
+                                      y + CELL + 2
+                                  ),
+                                  radius=4,
+                                  outline="#ffffff",
+                                  width=1
+                              )
+
+
+              # ----------------------------------------------
+              # Animated sweep
+              # ----------------------------------------------
+
+              sweep_x = (
+                  START_X
+                  +
+                  (
+                      current /
+                      max_diagonal
+                  )
+                  *
+                  (
+                      53 *
+                      (CELL + GAP)
+                  )
+              )
+
+              draw.rectangle(
+                  (
+                      sweep_x,
+                      START_Y - 6,
+                      sweep_x + 6,
+                      START_Y
+                      +
+                      7 *
+                      (CELL + GAP)
+                      + 6
+                  ),
+                  fill="#ffffff"
+              )
+
+
+              # ----------------------------------------------
+              # Legend
+              # ----------------------------------------------
+
+              draw.text(
+                  (
+                      20,
+                      208
+                  ),
+                  "LOW",
+                  font=SMALL_FONT,
+                  fill="#6e7681"
+              )
+
+
+              draw.text(
+                  (
+                      WIDTH - 55,
+                      208
+                  ),
+                  "HIGH",
+                  font=SMALL_FONT,
+                  fill="#39d353"
+              )
+
+
+              frames.append(image)
+
+
+          # Hold the final real-data graph
+          for _ in range(15):
+
+              frames.append(
+                  frames[-1].copy()
+              )
+
+
+          # ==================================================
+          # SAVE GIF
+          # ==================================================
+
+          frames[0].save(
+              OUTPUT,
+              save_all=True,
+              append_images=frames[1:],
+              duration=70,
+              loop=0,
+              optimize=False
+          )
+
+
+          print(
+              "Real contribution GIF generated."
+          )
+
+          print(
+              "Total contributions:",
+              calendar["totalContributions"]
+          )
+
+          PY
+
+
+      # ------------------------------------------------------
+      # Commit updated GIF
+      # ------------------------------------------------------
+
+      - name: Commit updated contribution GIF
+        run: |
+
+          git config user.name "github-actions[bot]"
+
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add github-contribution-animation.gif
+
+          if git diff --cached --quiet; then
+            echo "No contribution changes detected."
+          else
+            git commit \
+              -m "Update contribution animation"
+
+            git push
+          fi
